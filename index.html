@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pasta Shape Identifier</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card: rgba(255,255,255,0.06);
+      --border: rgba(255,255,255,0.10);
+      --text: #e9eefc;
+      --muted: #a8b3d6;
+      --accent: #7aa2ff;
+      --shadow: 0 12px 34px rgba(0,0,0,0.35);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background:
+        radial-gradient(1100px 600px at 15% 10%, rgba(122,162,255,0.22), transparent 60%),
+        radial-gradient(900px 520px at 90% 30%, rgba(122,162,255,0.14), transparent 55%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .wrap { width: 100%; max-width: 980px; }
+    h1 { margin: 0 0 6px 0; font-size: clamp(28px, 4vw, 42px); line-height: 1.1; }
+    .sub { margin: 0 0 18px 0; color: var(--muted); line-height: 1.4; }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.04));
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+    .row { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 14px; }
+    @media (max-width: 900px) { .row { grid-template-columns: 1fr; } }
+
+    .progress { display:flex; align-items:center; gap: 12px; margin-bottom: 14px; }
+    .bar { flex:1; height: 10px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow:hidden; border: 1px solid var(--border); }
+    .bar > div { height:100%; width:0%; background: linear-gradient(90deg, var(--accent), rgba(122,162,255,0.55)); transition: width 220ms ease; border-radius: 999px; }
+    .step { color: var(--muted); font-size: 14px; white-space: nowrap; }
+
+    .qtitle { font-size: 18px; margin: 8px 0 12px 0; }
+    .answers { display:grid; grid-template-columns: 1fr; gap: 10px; }
+    @media (min-width: 680px) { .answers { grid-template-columns: 1fr 1fr; } }
+
+    button.choice {
+      width: 100%;
+      text-align: left;
+      padding: 12px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      cursor: pointer;
+      transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+      min-height: 54px;
+    }
+    button.choice:hover {
+      transform: translateY(-1px);
+      border-color: rgba(122,162,255,0.55);
+      background: rgba(122,162,255,0.10);
+    }
+
+    .controls { display:flex; gap:10px; margin-top: 12px; align-items:center; justify-content: space-between; }
+    .btn {
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      padding: 10px 12px;
+      cursor: pointer;
+    }
+    .btn.primary { background: rgba(122,162,255,0.18); border-color: rgba(122,162,255,0.40); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .panelTitle { color: var(--muted); font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; margin: 0 0 10px 0; }
+    .mini { color: var(--muted); font-size: 14px; line-height: 1.45; }
+
+    .list { display:flex; flex-direction: column; gap: 10px; }
+    .item {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(0,0,0,0.12);
+    }
+    .itemTop { display:flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+    .name { font-weight: 700; }
+    .score { color: var(--muted); font-size: 13px; }
+    .tags { display:flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .tag { font-size: 12px; padding: 5px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); background: rgba(255,255,255,0.05); }
+    .hint { margin-top: 8px; color: var(--muted); font-size: 13px; }
+
+    .done {
+      display:none;
+      margin-top: 10px;
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+    }
+    .done h2 { margin: 0 0 8px 0; font-size: 22px; }
+    .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 680px) { .grid2 { grid-template-columns: 1fr; } }
+
+    .kbd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      padding: 2px 6px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      background: rgba(255,255,255,0.05);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <h1>Pasta Shape Identifier</h1>
+    <p class="sub">
+      Answer simple visual questions (length, hollow, ridges, twists, etc.). The app narrows to likely matches.
+      This is a rule-based “field guide” approach—accurate for many common shapes without needing image upload.
+    </p>
+
+    <div class="card">
+      <div class="progress">
+        <div class="bar"><div id="barFill"></div></div>
+        <div class="step" id="stepText">Question 1</div>
+      </div>
+
+      <div class="row">
+        <div>
+          <div class="qtitle" id="questionText"></div>
+          <div class="answers" id="answers"></div>
+
+          <div class="controls">
+            <button class="btn" id="backBtn" type="button">Back</button>
+            <div class="mini">Tip: if unsure, choose the closest option and continue.</div>
+            <button class="btn primary" id="restartBtn" type="button">Restart</button>
+          </div>
+
+          <div class="done" id="done">
+            <h2>Best match</h2>
+            <div class="grid2">
+              <div class="item" id="bestCard"></div>
+              <div class="item">
+                <div class="panelTitle">How to verify</div>
+                <div class="mini" id="verifyText"></div>
+                <div class="hint" style="margin-top:10px;">
+                  Power tip: add a photo-based step later by pairing this with a separate image classifier,
+                  but this guided key gets you surprisingly far for common shapes.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="panelTitle">Likely matches (updates as you answer)</div>
+          <div class="list" id="candidates"></div>
+          <p class="mini" style="margin-top:10px;">
+            Scoring is “feature match” based. Higher means more consistent with your answers.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <p class="mini" style="margin-top:14px;">
+      Keyboard: <span class="kbd">1</span>–<span class="kbd">4</span> selects an answer (when available).
+    </p>
+  </div>
+
+  <script>
+    /**
+     * Data model:
+     * Each pasta has a set of boolean/categorical features.
+     * Each question asks about one feature and filters/scores candidates.
+     *
+     * You can expand the list by adding more pasta objects with features.
+     */
+    const PASTA = [
+      {
+        id: "spaghetti",
+        name: "Spaghetti",
+        features: { length: "long", hollow: "no", ribbon: "no", twist: "no", stuffed: "no", ridged: "no", tubeSize: "none", cut: "straight" },
+        notes: "Long, thin, solid strands.",
+        verify: "Check: long strands, round cross-section, not hollow. Thinner than bucatini; not flat like linguine."
+      },
+      {
+        id: "linguine",
+        name: "Linguine",
+        features: { length: "long", hollow: "no", ribbon: "yes", twist: "no", stuffed: "no", ridged: "no", tubeSize: "none", cut: "straight" },
+        notes: "Long, flat-ish strands (narrow ribbon).",
+        verify: "Check: long and flat (oval/flat cross-section), wider than spaghetti but much narrower than fettuccine."
+      },
+      {
+        id: "fettuccine",
+        name: "Fettuccine",
+        features: { length: "long", hollow: "no", ribbon: "yes", twist: "no", stuffed: "no", ridged: "no", tubeSize: "none", cut: "straight" },
+        notes: "Long, wide ribbons.",
+        verify: "Check: noticeably wide flat ribbons. Typically wider than linguine."
+      },
+      {
+        id: "bucatini",
+        name: "Bucatini",
+        features: { length: "long", hollow: "yes", ribbon: "no", twist: "no", stuffed: "no", ridged: "no", tubeSize: "thin", cut: "straight" },
+        notes: "Long strands with a hole through the center.",
+        verify: "Check: looks like thick spaghetti but hollow. Hold it up and look for a center tunnel."
+      },
+      {
+        id: "penne",
+        name: "Penne",
+        features: { length: "short", hollow: "yes", ribbon: "no", twist: "no", stuffed: "no", ridged: "sometimes", tubeSize: "medium", cut: "diagonal" },
+        notes: "Short tubes with diagonal cut ends; may be ridged (rigate) or smooth (lisce).",
+        verify: "Check: diagonal ends (like a quill). If ends are straight, consider ziti. If very large and ridged, consider rigatoni."
+      },
+      {
+        id: "rigatoni",
+        name: "Rigatoni",
+        features: { length: "short", hollow: "yes", ribbon: "no", twist: "no", stuffed: "no", ridged: "yes", tubeSize: "large", cut: "straight" },
+        notes: "Large, ridged tubes with straight cut ends.",
+        verify: "Check: straight ends + big diameter + ridges. Larger than penne; more pronounced ridges."
+      },
+      {
+        id: "ziti",
+        name: "Ziti",
+        features: { length: "short", hollow: "yes", ribbon: "no", twist: "no", stuffed: "no", ridged: "no", tubeSize: "medium", cut: "straight" },
+        notes: "Medium tubes with straight cut ends; typically smooth.",
+        verify: "Check: straight ends (unlike penne). Usually smooth (unlike rigatoni)."
+      },
+      {
+        id: "fusilli",
+        name: "Fusilli",
+        features: { length: "short", hollow: "no", ribbon: "no", twist: "yes", stuffed: "no", ridged: "no", tubeSize: "none", cut: "n/a" },
+        notes: "Spirals/corkscrews (solid).",
+        verify: "Check: tight spiral shape. If it’s a hollow spiral tube, consider cavatappi."
+      },
+      {
+        id: "cavatappi",
+        name: "Cavatappi",
+        features: { length: "short", hollow: "yes", ribbon: "no", twist: "yes", stuffed: "no", ridged: "sometimes", tubeSize: "medium", cut: "n/a" },
+        notes: "Hollow corkscrew tubes (spiral macaroni).",
+        verify: "Check: spiral AND hollow. Usually thicker and more “macaroni-like” than fusilli."
+      },
+      {
+        id: "farfalle",
+        name: "Farfalle",
+        features: { length: "short", hollow: "no", ribbon: "no", twist: "no", stuffed: "no", ridged: "no", tubeSize: "none", cut: "pinched" },
+        notes: "Bowties with a pinched center.",
+        verify: "Check: obvious bowtie shape and pinched middle."
+      },
+      {
+        id: "orecchiette",
+        name: "Orecchiette",
+        features: { length: "short", hollow: "cup", ribbon: "no", twist: "no", stuffed: "no", ridged: "no", tubeSize: "none", cut: "n/a" },
+        notes: "Small 'ears'—little concave cups.",
+        verify: "Check: each piece is a small cup/ear, not a tube. Often slightly thicker on one side."
+      },
+      {
+        id: "gnocchi",
+        name: "Gnocchi",
+        features: { length: "short", hollow: "no", ribbon: "no", twist: "no", stuffed: "no", ridged: "yes", tubeSize: "none", cut: "dumpling" },
+        notes: "Potato dumplings; often ridged/indented.",
+        verify: "Check: soft dumpling texture (not dried pasta). If it’s shelf-stable dried, it’s probably not gnocchi."
+      },
+      {
+        id: "ravioli",
+        name: "Ravioli",
+        features: { length: "short", hollow: "no", ribbon: "no", twist: "no", stuffed: "yes", ridged: "sometimes", tubeSize: "none", cut: "filled" },
+        notes: "Filled pasta pillows (stuffed).",
+        verify: "Check: sealed edges, filled interior. If ring-shaped stuffed, consider tortellini."
+      },
+      {
+        id: "tortellini",
+        name: "Tortellini",
+        features: { length: "short", hollow: "no", ribbon: "no", twist: "ring", stuffed: "yes", ridged: "no", tubeSize: "none", cut: "filled" },
+        notes: "Small stuffed rings/navels.",
+        verify: "Check: ring shape with filling. Smaller and tighter than tortelloni."
+      }
+    ];
+
+    // Questions are ordered from high-discrimination to finer details.
+    // Each answer sets a constraint (feature=value) OR loosens it (unknown).
+    const QUESTIONS = [
+      {
+        key: "length",
+        text: "Is the pasta long or short?",
+        answers: [
+          { label: "Long (strands/ribbons)", set: { length: "long" } },
+          { label: "Short (pieces)", set: { length: "short" } },
+          { label: "Not sure", set: { } }
+        ]
+      },
+      {
+        key: "stuffed",
+        text: "Is it stuffed/filled (like a pocket with filling)?",
+        answers: [
+          { label: "Yes, stuffed", set: { stuffed: "yes" } },
+          { label: "No, not stuffed", set: { stuffed: "no" } },
+          { label: "Not sure", set: { } }
+        ]
+      },
+      {
+        key: "hollow",
+        text: "Is it hollow (tube or hole through the center)?",
+        answers: [
+          { label: "Yes, hollow/tube", set: { hollow: "yes" } },
+          { label: "No, solid", set: { hollow: "no" } },
+          { label: "It’s more like a cup/ear (concave)", set: { hollow: "cup" } },
+          { label: "Not sure", set: { } }
+        ]
+      },
+      {
+        key: "twist",
+        text: "Is it twisted/spiraled?",
+        answers: [
+          { label: "Yes, spiral/twist", set: { twist: "yes" } },
+          { label: "Yes, ring-like (stuffed ring)", set: { twist: "ring" } },
+          { label: "No", set: { twist: "no" } },
+          { label: "Not sure", set: { } }
+        ]
+      },
+      {
+        key: "ribbon",
+        text: "If it’s long: is it flat like a ribbon?",
+        answers: [
+          { label: "Yes, flat/ribbon", set: { ribbon: "yes" } },
+          { label: "No, round strand", set: { ribbon: "no" } },
+          { label: "Not sure / not long", set: { } }
+        ]
+      },
+      {
+        key: "cut",
+        text: "If it’s a tube: are the ends cut diagonally or straight?",
+        answers: [
+          { label: "Diagonal ends", set: { cut: "diagonal" } },
+          { label: "Straight ends", set: { cut: "straight" } },
+          { label: "Not sure / not a tube", set: { } }
+        ]
+      },
+      {
+        key: "ridged",
+        text: "Does it have ridges (grooves) on the surface?",
+        answers: [
+          { label: "Yes, ridged", set: { ridged: "yes" } },
+          { label: "No, smooth", set: { ridged: "no" } },
+          { label: "Some pieces do / subtle", set: { ridged: "sometimes" } },
+          { label: "Not sure", set: { } }
+        ]
+      },
+      {
+        key: "tubeSize",
+        text: "If it’s a tube: how big is the tube?",
+        answers: [
+          { label: "Thin hole (like thick spaghetti)", set: { tubeSize: "thin" } },
+          { label: "Medium (macaroni-ish)", set: { tubeSize: "medium" } },
+          { label: "Large (big bite)", set: { tubeSize: "large" } },
+          { label: "Not sure / not a tube", set: { } }
+        ]
+      }
+    ];
+
+    // State
+    const state = {
+      idx: 0,
+      history: [],     // [{ qIdx, set }]
+      filters: {}      // feature constraints
+    };
+
+    // Elements
+    const questionText = document.getElementById("questionText");
+    const answersEl = document.getElementById("answers");
+    const candidatesEl = document.getElementById("candidates");
+    const barFill = document.getElementById("barFill");
+    const stepText = document.getElementById("stepText");
+    const backBtn = document.getElementById("backBtn");
+    const restartBtn = document.getElementById("restartBtn");
+
+    const doneEl = document.getElementById("done");
+    const bestCard = document.getElementById("bestCard");
+    const verifyText = document.getElementById("verifyText");
+
+    function mergeFilters(base, patch) {
+      const next = { ...base };
+      for (const [k, v] of Object.entries(patch)) {
+        next[k] = v;
+      }
+      return next;
+    }
+
+    function scorePasta(p, filters) {
+      // Simple scoring:
+      // +2 for exact match, +1 for "compatible" (e.g., ridged yes vs sometimes), 0 for unknown, -3 for conflict.
+      let score = 0;
+      for (const [k, v] of Object.entries(filters)) {
+        if (v === undefined || v === null) continue;
+        const pv = p.features[k];
+
+        if (pv === v) { score += 2; continue; }
+
+        // Compatibility rules
+        if (k === "ridged") {
+          // If user says ridged yes, "sometimes" is compatible (less confident).
+          if (v === "yes" && pv === "sometimes") { score += 1; continue; }
+          if (v === "no"  && pv === "sometimes") { score += 1; continue; }
+          // user says sometimes: yes/no/sometimes all compatible
+          if (v === "sometimes") { score += 1; continue; }
+        }
+
+        // If user set a constraint and it doesn't match, penalize.
+        score -= 3;
+      }
+      return score;
+    }
+
+    function rankCandidates() {
+      const ranked = PASTA
+        .map(p => ({ pasta: p, score: scorePasta(p, state.filters) }))
+        .sort((a, b) => b.score - a.score);
+
+      // If all are very low due to contradictions, keep list but will show "widen your answers".
+      return ranked;
+    }
+
+    function renderCandidates() {
+      const ranked = rankCandidates();
+      const top = ranked.slice(0, 6);
+
+      candidatesEl.innerHTML = "";
+      top.forEach(({ pasta, score }) => {
+        const el = document.createElement("div");
+        el.className = "item";
+        el.innerHTML = `
+          <div class="itemTop">
+            <div class="name">${pasta.name}</div>
+            <div class="score">Score: ${score}</div>
+          </div>
+          <div class="hint">${pasta.notes}</div>
+          <div class="tags">
+            ${Object.entries(pasta.features)
+              .filter(([k,v]) => ["length","hollow","twist","ribbon","cut","ridged","stuffed","tubeSize"].includes(k))
+              .map(([k,v]) => `<span class="tag">${k}: ${v}</span>`).join("")}
+          </div>
+        `;
+        candidatesEl.appendChild(el);
+      });
+    }
+
+    function setProgress() {
+      const pct = Math.round((state.idx / QUESTIONS.length) * 100);
+      barFill.style.width = `${pct}%`;
+      stepText.textContent = state.idx < QUESTIONS.length
+        ? `Question ${state.idx + 1} of ${QUESTIONS.length}`
+        : `Complete`;
+    }
+
+    function renderQuestion() {
+      doneEl.style.display = "none";
+      setProgress();
+
+      const q = QUESTIONS[state.idx];
+      questionText.textContent = q.text;
+
+      answersEl.innerHTML = "";
+      q.answers.forEach((a, i) => {
+        const btn = document.createElement("button");
+        btn.className = "choice";
+        btn.type = "button";
+        btn.textContent = a.label;
+        btn.addEventListener("click", () => chooseAnswer(i));
+        answersEl.appendChild(btn);
+      });
+
+      backBtn.disabled = state.history.length === 0;
+
+      renderCandidates();
+    }
+
+    function chooseAnswer(answerIndex) {
+      const q = QUESTIONS[state.idx];
+      const choice = q.answers[answerIndex];
+
+      state.history.push({ qIdx: state.idx, set: choice.set });
+      state.filters = mergeFilters(state.filters, choice.set);
+
+      state.idx += 1;
+
+      // If we're done, show best match; else next question.
+      if (state.idx >= QUESTIONS.length) {
+        showResult();
+      } else {
+        renderQuestion();
+      }
+    }
+
+    function showResult() {
+      setProgress();
+      renderCandidates();
+
+      const ranked = rankCandidates();
+      const best = ranked[0];
+
+      const p = best.pasta;
+      bestCard.innerHTML = `
+        <div class="itemTop">
+          <div class="name">${p.name}</div>
+          <div class="score">Score: ${best.score}</div>
+        </div>
+        <div class="hint" style="margin-top:8px;">${p.notes}</div>
+        <div class="tags" style="margin-top:10px;">
+          ${Object.entries(state.filters).map(([k,v]) => `<span class="tag">You: ${k}=${v}</span>`).join("")}
+        </div>
+      `;
+      verifyText.textContent = p.verify;
+
+      doneEl.style.display = "block";
+    }
+
+    function goBack() {
+      if (state.history.length === 0) return;
+
+      // Reset and re-apply history up to previous step.
+      state.history.pop();
+      state.idx = state.history.length;
+
+      state.filters = {};
+      for (const h of state.history) {
+        state.filters = mergeFilters(state.filters, h.set);
+      }
+      renderQuestion();
+    }
+
+    function restart() {
+      state.idx = 0;
+      state.history = [];
+      state.filters = {};
+      renderQuestion();
+    }
+
+    backBtn.addEventListener("click", goBack);
+    restartBtn.addEventListener("click", restart);
+
+    // Keyboard shortcuts: 1-4 choose answer.
+    window.addEventListener("keydown", (e) => {
+      const n = parseInt(e.key, 10);
+      if (!Number.isFinite(n)) return;
+      const idx = n - 1;
+      const q = QUESTIONS[state.idx];
+      if (!q) return;
+      if (idx >= 0 && idx < q.answers.length) chooseAnswer(idx);
+    });
+
+    // Initial render
+    renderQuestion();
+  </script>
+</body>
+</html>
